@@ -5,6 +5,16 @@ import {
   GraduationCap, Stethoscope, ShieldCheck, Megaphone, Image as ImageIcon,
   FileText, Upload, Check, Globe, PlayCircle, ArrowRight, Flame
 } from "lucide-react";
+import { db } from "./firebase";
+import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+
+// ---------------------------------------------------------------------
+// RAZORPAY — TEST MODE ONLY.
+// Replace with your real Razorpay Test Key ID from the Razorpay dashboard
+// (Settings -> API Keys). Keep it as a *test* key ("rzp_test_...") until
+// you are ready to go live with real payments.
+// ---------------------------------------------------------------------
+const RAZORPAY_KEY_ID = "rzp_test_YOUR_KEY_ID";
 
 /* ----------------------------------------------------------------------
    TOKENS
@@ -656,25 +666,106 @@ function PressMedia() {
 /* -------------------------------- membership form -------------------------------- */
 
 const initialForm = {
-  name: "", phone: "", permAddress: "", tempAddress: "", joinDate: "",
+  name: "", phone: "", permanentAddress: "", temporaryAddress: "", joinDate: "",
   referred: "no", referrerName: "", referrerRelation: "",
-  education: "", occupation: "", expertise: "", aadhaar: "",
+  education: "", occupation: "", specialization: "", aadhar: "",
   amount: "", photoName: "",
 };
+
+// Loads the Razorpay checkout.js script once and re-uses it on later opens.
+function loadRazorpayScript() {
+  return new Promise((resolve) => {
+    if (window.Razorpay) { resolve(true); return; }
+    const script = document.createElement("script");
+    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
+}
 
 function MembershipModal({ open, onClose }) {
   const [form, setForm] = useState(initialForm);
   const [submitted, setSubmitted] = useState(false);
+  const [paymentInfo, setPaymentInfo] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
 
   const update = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
-  const handleSubmit = (e) => {
+  // Writes the registration + payment record to Firestore, in the exact
+  // shape admin-panel.html (public/admin.html) expects to read.
+  const saveRegistration = async (data, amount, paymentId) => {
+    await addDoc(collection(db, "registrations"), {
+      ...data,
+      amount,
+      paymentId,
+      status: "paid",
+      adminVerified: false,
+      createdAt: serverTimestamp(),
+    });
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    setSubmitted(true);
+    setError("");
+
+    const amount = parseInt(form.amount, 10);
+    if (!amount || amount < 1) {
+      setError("कृपया मान्य सहयोग राशि दर्ज करें (Please enter a valid contribution amount)");
+      return;
+    }
+
+    setSubmitting(true);
+    const ok = await loadRazorpayScript();
+    if (!ok || !window.Razorpay) {
+      setError("भुगतान गेटवे लोड नहीं हो सका। कृपया पुनः प्रयास करें। (Payment gateway failed to load, please retry.)");
+      setSubmitting(false);
+      return;
+    }
+
+    // Fields sent to Firestore — matches columns read by public/admin.html.
+    const {
+      photoName, ...registrationData
+    } = form;
+
+    const options = {
+      key: RAZORPAY_KEY_ID,
+      amount: amount * 100, // paise
+      currency: "INR",
+      name: "हिंद जनसेवी पार्टी / Hind Jansewi Party",
+      description: "Membership Registration Contribution",
+      prefill: { name: form.name, contact: form.phone },
+      theme: { color: "#0B1B33" },
+      handler: async function (response) {
+        try {
+          await saveRegistration(registrationData, amount, response.razorpay_payment_id);
+          setPaymentInfo({ paymentId: response.razorpay_payment_id, amount });
+          setSubmitted(true);
+        } catch (err) {
+          console.error("Firestore write failed:", err);
+          setError("भुगतान सफल हुआ, लेकिन डेटा सहेजने में त्रुटि हुई। कृपया सहयोग टीम से संपर्क करें। (Payment succeeded but saving failed — please contact support.)");
+        } finally {
+          setSubmitting(false);
+        }
+      },
+      modal: {
+        ondismiss: function () {
+          setSubmitting(false);
+        },
+      },
+    };
+
+    const rzp = new window.Razorpay(options);
+    rzp.on("payment.failed", function (resp) {
+      setError("भुगतान असफल रहा: " + resp.error.description);
+      setSubmitting(false);
+    });
+    rzp.open();
   };
 
   useEffect(() => {
-    if (!open) { setSubmitted(false); setForm(initialForm); }
+    if (!open) { setSubmitted(false); setForm(initialForm); setError(""); setPaymentInfo(null); }
   }, [open]);
 
   if (!open) return null;
@@ -702,11 +793,21 @@ function MembershipModal({ open, onClose }) {
               <Check size={30} />
             </div>
             <h3 className="hi display font-bold text-xl text-navy mt-5">धन्यवाद, {form.name || "साथी"}!</h3>
-            <p className="hi text-navy-65 mt-2">आपका पंजीकरण सफलतापूर्वक प्राप्त हुआ। हमारी टीम शीघ्र संपर्क करेगी।</p>
+            <p className="hi text-navy-65 mt-2">आपका पंजीकरण एवं भुगतान सफलतापूर्वक दर्ज हो गया है।</p>
+            {paymentInfo && (
+              <p className="text-xs text-navy-50 mt-2">
+                Payment ID: {paymentInfo.paymentId} | Amount: ₹{paymentInfo.amount}
+              </p>
+            )}
             <button onClick={onClose} className="btn-primary mt-7 px-6 py-3 rounded-full font-semibold focus-ring">बंद करें</button>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="p-6 md:p-7 grid sm:grid-cols-2 gap-5">
+            {error && (
+              <div className="sm:col-span-2 text-sm rounded-lg px-4 py-3" style={{ background: "#FEE2E2", color: "#B91C1C" }}>
+                {error}
+              </div>
+            )}
             <Field label="पूरा नाम (Full Name)" span2>
               <input required value={form.name} onChange={update("name")} className="field-input" placeholder="अपना पूरा नाम लिखें" />
             </Field>
@@ -720,11 +821,11 @@ function MembershipModal({ open, onClose }) {
             </Field>
 
             <Field label="स्थायी पता (Permanent Address)" span2>
-              <textarea required value={form.permAddress} onChange={update("permAddress")} className="field-input" style={{ minHeight: 70 }} placeholder="स्थायी पता लिखें" />
+              <textarea required value={form.permanentAddress} onChange={update("permanentAddress")} className="field-input" style={{ minHeight: 70 }} placeholder="स्थायी पता लिखें" />
             </Field>
 
             <Field label="अस्थायी पता (Temporary Address)" span2>
-              <textarea value={form.tempAddress} onChange={update("tempAddress")} className="field-input" style={{ minHeight: 70 }} placeholder="वर्तमान पता (यदि भिन्न हो)" />
+              <textarea value={form.temporaryAddress} onChange={update("temporaryAddress")} className="field-input" style={{ minHeight: 70 }} placeholder="वर्तमान पता (यदि भिन्न हो)" />
             </Field>
 
             <Field label="क्या आप किसी के माध्यम से जुड़ रहे हैं?" span2>
@@ -760,15 +861,15 @@ function MembershipModal({ open, onClose }) {
             </Field>
 
             <Field label="विशेषज्ञता (Expertise / Specialization)" span2>
-              <input value={form.expertise} onChange={update("expertise")} className="field-input" placeholder="जैसे: कानून, चिकित्सा, शिक्षा, प्रबंधन" />
+              <input value={form.specialization} onChange={update("specialization")} className="field-input" placeholder="जैसे: कानून, चिकित्सा, शिक्षा, प्रबंधन" />
             </Field>
 
             <Field label="आधार नम्बर (Aadhaar Number)">
-              <input value={form.aadhaar} onChange={update("aadhaar")} maxLength={12} pattern="[0-9]{12}" className="field-input" placeholder="12 अंकों का आधार नंबर" />
+              <input value={form.aadhar} onChange={update("aadhar")} maxLength={12} pattern="[0-9]{12}" className="field-input" placeholder="12 अंकों का आधार नंबर" />
             </Field>
 
             <Field label="सहयोग राशि (Contribution Amount ₹)">
-              <input type="number" min="0" value={form.amount} onChange={update("amount")} className="field-input" placeholder="वैकल्पिक" />
+              <input required type="number" min="1" value={form.amount} onChange={update("amount")} className="field-input" placeholder="जैसे: 101, 501, 1001" />
             </Field>
 
             <Field label="पासपोर्ट आकार फोटो (Photo Upload)" span2>
@@ -785,9 +886,12 @@ function MembershipModal({ open, onClose }) {
             </Field>
 
             <div className="sm:col-span-2 mt-2">
-              <button type="submit" className="btn-primary w-full py-3.5 rounded-full font-bold text-base focus-ring">
-                पंजीकरण जमा करें
+              <button type="submit" disabled={submitting} className="btn-primary w-full py-3.5 rounded-full font-bold text-base focus-ring" style={submitting ? { opacity: 0.7, cursor: "not-allowed" } : undefined}>
+                {submitting ? "प्रतीक्षा करें..." : "फॉर्म जमा करें और भुगतान करें"}
               </button>
+              <p className="text-xs text-navy-50 text-center mt-2">
+                भुगतान सुरक्षित रूप से Razorpay द्वारा संसाधित किया जाता है (टेस्ट मोड)
+              </p>
             </div>
           </form>
         )}

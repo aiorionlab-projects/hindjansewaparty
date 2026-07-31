@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>हिंद जनसेवी पार्टी | Admin Panel</title>
+
+<!-- Firebase (compat SDK — no build step needed) -->
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+
+<style>
+  :root{
+    --maroon:#c81e3e;
+    --deep-maroon:#8e1030;
+    --ink:#20242b;
+    --bg:#f4f5f7;
+    --card:#ffffff;
+    --border:#e3e6ea;
+    --green:#1a8a4a;
+    --amber:#b8860b;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:'Segoe UI', Arial, sans-serif;
+    background:var(--bg);
+    color:var(--ink);
+  }
+  /* ---- LOGIN ---- */
+  #loginScreen{
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:20px;
+  }
+  .login-card{
+    background:var(--card);
+    border:1px solid var(--border);
+    border-radius:12px;
+    padding:36px 32px;
+    width:100%;
+    max-width:360px;
+    box-shadow:0 8px 30px rgba(0,0,0,.08);
+    text-align:center;
+  }
+  .login-card h1{
+    font-size:20px;
+    color:var(--maroon);
+    margin:0 0 4px 0;
+  }
+  .login-card p{font-size:13px;color:#666;margin-top:0;margin-bottom:24px;}
+  .login-card input{
+    width:100%;
+    padding:11px 12px;
+    margin-bottom:12px;
+    border:1px solid var(--border);
+    border-radius:8px;
+    font-size:14px;
+  }
+  .login-card button{
+    width:100%;
+    padding:12px;
+    background:var(--maroon);
+    color:#fff;
+    border:none;
+    border-radius:8px;
+    font-weight:700;
+    cursor:pointer;
+    font-size:14px;
+  }
+  .login-card button:hover{background:var(--deep-maroon);}
+  #loginError{color:var(--maroon);font-size:13px;margin-top:10px;min-height:16px;}
+
+  /* ---- DASHBOARD ---- */
+  #dashboard{display:none;}
+  header{
+    background:var(--card);
+    border-bottom:1px solid var(--border);
+    padding:16px 24px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    flex-wrap:wrap;
+    gap:10px;
+  }
+  header h1{font-size:18px;margin:0;color:var(--maroon);}
+  header .who{font-size:13px;color:#666;}
+  header button.logout{
+    border:1px solid var(--border);
+    background:#fff;
+    padding:7px 14px;
+    border-radius:8px;
+    cursor:pointer;
+    font-size:13px;
+  }
+  main{padding:20px 24px;max-width:1200px;margin:0 auto;}
+
+  .stat-row{
+    display:flex;
+    gap:14px;
+    flex-wrap:wrap;
+    margin-bottom:20px;
+  }
+  .stat{
+    background:var(--card);
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:16px 20px;
+    min-width:160px;
+    flex:1;
+  }
+  .stat .label{font-size:12px;color:#777;text-transform:uppercase;letter-spacing:.4px;}
+  .stat .value{font-size:24px;font-weight:800;margin-top:4px;}
+  .stat.total .value{color:var(--green);}
+
+  .toolbar{
+    display:flex;
+    gap:10px;
+    margin-bottom:14px;
+    flex-wrap:wrap;
+    align-items:center;
+  }
+  .toolbar input[type=text]{
+    flex:1;
+    min-width:200px;
+    padding:9px 12px;
+    border:1px solid var(--border);
+    border-radius:8px;
+    font-size:14px;
+  }
+  .toolbar select{
+    padding:9px 10px;
+    border:1px solid var(--border);
+    border-radius:8px;
+    font-size:14px;
+  }
+  .toolbar button{
+    padding:9px 16px;
+    border:1px solid var(--maroon);
+    background:#fff;
+    color:var(--maroon);
+    border-radius:8px;
+    cursor:pointer;
+    font-weight:600;
+    font-size:13px;
+  }
+
+  .table-wrap{
+    background:var(--card);
+    border:1px solid var(--border);
+    border-radius:10px;
+    overflow-x:auto;
+  }
+  table{width:100%;border-collapse:collapse;font-size:13px;min-width:900px;}
+  th,td{
+    text-align:left;
+    padding:10px 12px;
+    border-bottom:1px solid var(--border);
+    white-space:nowrap;
+  }
+  th{
+    background:#faf9f6;
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:.4px;
+    color:#666;
+    position:sticky;top:0;
+  }
+  tr:hover td{background:#fbfbfb;}
+  .badge{
+    padding:3px 9px;
+    border-radius:12px;
+    font-size:11px;
+    font-weight:700;
+  }
+  .badge.paid{background:#e5f6ec;color:var(--green);}
+  .badge.pending{background:#fdf3e1;color:var(--amber);}
+  .badge.verified{background:#e5f6ec;color:var(--green);}
+  .badge.unverified{background:#f1f2f4;color:#777;}
+  #emptyState{
+    padding:40px;
+    text-align:center;
+    color:#888;
+    font-size:14px;
+  }
+  .row-actions{display:flex;gap:6px;}
+  .row-actions button{
+    border:1px solid var(--border);
+    background:#fff;
+    padding:5px 10px;
+    border-radius:6px;
+    cursor:pointer;
+    font-size:12px;
+  }
+  .row-actions button.verify-btn{border-color:var(--green);color:var(--green);}
+  .row-actions button.verify-btn:hover{background:#e5f6ec;}
+  .row-actions button.view-btn:hover{background:#f5f5f5;}
+
+  /* ---- MODAL ---- */
+  .modal-overlay{
+    display:none;
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,.45);
+    align-items:center;
+    justify-content:center;
+    z-index:50;
+    padding:20px;
+  }
+  .modal-overlay.show{display:flex;}
+  .modal-box{
+    background:var(--card);
+    border-radius:12px;
+    max-width:520px;
+    width:100%;
+    max-height:85vh;
+    overflow-y:auto;
+    padding:24px 28px;
+  }
+  .modal-box h2{font-size:17px;color:var(--maroon);margin-top:0;}
+  .modal-row{
+    display:flex;
+    justify-content:space-between;
+    gap:16px;
+    padding:8px 0;
+    border-bottom:1px solid var(--border);
+    font-size:14px;
+  }
+  .modal-row .k{color:#777;}
+  .modal-row .v{font-weight:600;text-align:right;}
+  .modal-close{
+    margin-top:18px;
+    width:100%;
+    padding:10px;
+    border:1px solid var(--border);
+    background:#fff;
+    border-radius:8px;
+    cursor:pointer;
+    font-size:13px;
+  }
+  .modal-verify{
+    margin-top:10px;
+    width:100%;
+    padding:10px;
+    border:none;
+    background:var(--green);
+    color:#fff;
+    border-radius:8px;
+    cursor:pointer;
+    font-weight:700;
+    font-size:13px;
+  }
+</style>
+</head>
+<body>
+
+<!-- LOGIN SCREEN -->
+<div id="loginScreen">
+  <div class="login-card">
+    <h1>हिंद जनसेवी पार्टी</h1>
+    <p>Admin Panel — Registration Records</p>
+    <input type="email" id="loginEmail" placeholder="Admin email">
+    <input type="password" id="loginPassword" placeholder="Password">
+    <button onclick="doLogin()">Sign In</button>
+    <div id="loginError"></div>
+  </div>
+</div>
+
+<!-- DASHBOARD -->
+<div id="dashboard">
+  <header>
+    <h1>हिंद जनसेवी पार्टी — Registrations</h1>
+    <div style="display:flex;align-items:center;gap:14px;">
+      <span class="who" id="whoAmI"></span>
+      <button class="logout" onclick="doLogout()">Sign Out</button>
+    </div>
+  </header>
+
+  <main>
+    <div class="stat-row">
+      <div class="stat total">
+        <div class="label">Total Collected</div>
+        <div class="value" id="statTotal">₹0</div>
+      </div>
+      <div class="stat">
+        <div class="label">Total Members</div>
+        <div class="value" id="statCount">0</div>
+      </div>
+      <div class="stat">
+        <div class="label">Paid</div>
+        <div class="value" id="statPaid">0</div>
+      </div>
+      <div class="stat">
+        <div class="label">Pending</div>
+        <div class="value" id="statPending">0</div>
+      </div>
+    </div>
+
+    <div class="toolbar">
+      <input type="text" id="searchBox" placeholder="Search by name or phone..." oninput="renderTable()">
+      <select id="statusFilter" onchange="renderTable()">
+        <option value="all">All Status</option>
+        <option value="paid">Paid</option>
+        <option value="pending">Pending</option>
+        <option value="verified">Verified</option>
+        <option value="unverified">Not yet verified</option>
+      </select>
+      <button onclick="exportCSV()">Export CSV</button>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Name</th>
+            <th>Phone</th>
+            <th>Address</th>
+            <th>Occupation</th>
+            <th>Referred By</th>
+            <th>Amount</th>
+            <th>Payment ID</th>
+            <th>Status</th>
+            <th>Verified</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+      <div id="emptyState" style="display:none;">No registrations yet.</div>
+    </div>
+  </main>
+</div>
+
+<!-- DETAIL / VERIFY MODAL -->
+<div class="modal-overlay" id="detailModal">
+  <div class="modal-box">
+    <h2>Registration details</h2>
+    <div id="modalBody"></div>
+    <button class="modal-verify" id="modalVerifyBtn" style="display:none" onclick="verifyFromModal()">Verify payment</button>
+    <button class="modal-close" onclick="closeModal()">Close</button>
+  </div>
+</div>
+
+<script>
+  // ---------------------------------------------------------------
+  // 1) REPLACE with your actual Firebase project config
+  //    (Firebase console -> Project settings -> Your apps -> SDK config)
+  // ---------------------------------------------------------------
+  const firebaseConfig = {
+    apiKey: "AIzaSyALRv-BQ-43Ksspw7si6hE8AFtPDoBIgko",
+    authDomain: "hind-jansevi-party.firebaseapp.com",
+    projectId: "hind-jansevi-party",
+    storageBucket: "hind-jansevi-party.firebasestorage.app",
+    messagingSenderId: "354670866421",
+    appId: "1:354670866421:web:c5a69872de7083db0e7abc",
+    measurementId: "G-V2R34QS67J"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+  const db = firebase.firestore();
+
+  let allRecords = [];
+
+  // ---------------------------------------------------------------
+  // AUTH
+  // ---------------------------------------------------------------
+  function doLogin(){
+    const email = document.getElementById('loginEmail').value.trim();
+    const pass = document.getElementById('loginPassword').value;
+    document.getElementById('loginError').innerText = '';
+    auth.signInWithEmailAndPassword(email, pass)
+      .catch(err => {
+        document.getElementById('loginError').innerText = err.message;
+      });
+  }
+
+  function doLogout(){
+    auth.signOut();
+  }
+
+  auth.onAuthStateChanged(user => {
+    if(user){
+      document.getElementById('loginScreen').style.display = 'none';
+      document.getElementById('dashboard').style.display = 'block';
+      document.getElementById('whoAmI').innerText = user.email;
+      subscribeToRegistrations();
+    } else {
+      document.getElementById('loginScreen').style.display = 'flex';
+      document.getElementById('dashboard').style.display = 'none';
+    }
+  });
+
+  // ---------------------------------------------------------------
+  // FIRESTORE — live listener on the "registrations" collection
+  // Each doc is expected to look like:
+  // {
+  //   name, phone, permanentAddress, temporaryAddress, occupation,
+  //   referrerName, referrerRelation, amount, paymentId,
+  //   status: "paid" | "pending", createdAt: Timestamp
+  // }
+  // ---------------------------------------------------------------
+  function subscribeToRegistrations(){
+    db.collection('registrations').orderBy('createdAt','desc')
+      .onSnapshot(snapshot => {
+        allRecords = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        renderTable();
+      }, err => {
+        console.error(err);
+        document.getElementById('emptyState').style.display = 'block';
+        document.getElementById('emptyState').innerText = 'Could not load data: ' + err.message;
+      });
+  }
+
+  function renderTable(){
+    const search = document.getElementById('searchBox').value.toLowerCase();
+    const statusFilter = document.getElementById('statusFilter').value;
+
+    let filtered = allRecords.filter(r => {
+      const matchesSearch = !search ||
+        (r.name||'').toLowerCase().includes(search) ||
+        (r.phone||'').includes(search);
+      let matchesStatus = true;
+      if(statusFilter === 'paid' || statusFilter === 'pending'){
+        matchesStatus = r.status === statusFilter;
+      } else if(statusFilter === 'verified'){
+        matchesStatus = !!r.adminVerified;
+      } else if(statusFilter === 'unverified'){
+        matchesStatus = !r.adminVerified;
+      }
+      return matchesSearch && matchesStatus;
+    });
+
+    const tbody = document.getElementById('tableBody');
+    tbody.innerHTML = '';
+    document.getElementById('emptyState').style.display = filtered.length ? 'none' : 'block';
+
+    let total = 0, paidCount = 0, pendingCount = 0;
+    allRecords.forEach(r => {
+      if(r.status === 'paid'){ total += Number(r.amount||0); paidCount++; }
+      else pendingCount++;
+    });
+    document.getElementById('statTotal').innerText = '₹' + total.toLocaleString('en-IN');
+    document.getElementById('statCount').innerText = allRecords.length;
+    document.getElementById('statPaid').innerText = paidCount;
+    document.getElementById('statPending').innerText = pendingCount;
+
+    filtered.forEach(r => {
+      const tr = document.createElement('tr');
+      const date = r.createdAt && r.createdAt.toDate ? r.createdAt.toDate().toLocaleDateString('en-IN') : '-';
+      const referrer = r.referrerName ? (r.referrerName + (r.referrerRelation ? ' (' + r.referrerRelation + ')' : '')) : '-';
+      tr.innerHTML = `
+        <td>${date}</td>
+        <td>${r.name||'-'}</td>
+        <td>${r.phone||'-'}</td>
+        <td>${r.permanentAddress||'-'}</td>
+        <td>${r.occupation||'-'}</td>
+        <td>${referrer}</td>
+        <td>₹${Number(r.amount||0).toLocaleString('en-IN')}</td>
+        <td>${r.paymentId||'-'}</td>
+        <td><span class="badge ${r.status==='paid'?'paid':'pending'}">${r.status==='paid'?'Paid':'Pending'}</span></td>
+        <td><span class="badge ${r.adminVerified?'verified':'unverified'}">${r.adminVerified?'Verified':'Not verified'}</span></td>
+        <td>
+          <div class="row-actions">
+            <button class="view-btn" onclick="viewDetails('${r.id}')">View</button>
+            ${r.status==='paid' && !r.adminVerified ? `<button class="verify-btn" onclick="verifyPayment('${r.id}')">Verify</button>` : ''}
+          </div>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  // ---------------------------------------------------------------
+  // VERIFY / VIEW — lets the admin manually confirm a payment (e.g.
+  // after checking their bank statement matches the payment ID) and
+  // grant membership privilege, separate from Razorpay's own status.
+  // ---------------------------------------------------------------
+  let modalRecordId = null;
+
+  function viewDetails(id){
+    const r = allRecords.find(x => x.id === id);
+    if(!r) return;
+    modalRecordId = id;
+    const date = r.createdAt && r.createdAt.toDate ? r.createdAt.toDate().toLocaleString('en-IN') : '-';
+    const referrer = r.referrerName ? (r.referrerName + (r.referrerRelation ? ' (' + r.referrerRelation + ')' : '')) : 'Not referred';
+    const rows = [
+      ['Name', r.name], ['Phone', r.phone],
+      ['Permanent address', r.permanentAddress], ['Temporary address', r.temporaryAddress||'-'],
+      ['Date joined', r.joinDate||'-'], ['Referred by', referrer],
+      ['Education', r.education||'-'], ['Occupation', r.occupation||'-'],
+      ['Specialization', r.specialization||'-'], ['Aadhar', r.aadhar||'-'],
+      ['Amount', '₹'+Number(r.amount||0).toLocaleString('en-IN')],
+      ['Payment ID', r.paymentId||'-'], ['Payment status', r.status||'-'],
+      ['Submitted on', date],
+      ['Admin verified', r.adminVerified ? ('Yes — by '+(r.verifiedBy||'-')+' on '+(r.verifiedAt&&r.verifiedAt.toDate?r.verifiedAt.toDate().toLocaleString('en-IN'):'-')) : 'No']
+    ];
+    document.getElementById('modalBody').innerHTML = rows.map(([k,v]) =>
+      `<div class="modal-row"><span class="k">${k}</span><span class="v">${v||'-'}</span></div>`
+    ).join('');
+    document.getElementById('modalVerifyBtn').style.display =
+      (r.status === 'paid' && !r.adminVerified) ? 'block' : 'none';
+    document.getElementById('detailModal').classList.add('show');
+  }
+
+  function closeModal(){
+    document.getElementById('detailModal').classList.remove('show');
+    modalRecordId = null;
+  }
+
+  function verifyPayment(id){
+    if(!confirm('Mark this payment as verified? This confirms the member fully.')) return;
+    db.collection('registrations').doc(id).update({
+      adminVerified: true,
+      verifiedBy: auth.currentUser.email,
+      verifiedAt: firebase.firestore.FieldValue.serverTimestamp()
+    }).catch(err => alert('Could not verify: ' + err.message));
+  }
+
+  function verifyFromModal(){
+    if(modalRecordId){
+      verifyPayment(modalRecordId);
+      closeModal();
+    }
+  }
+
+  function exportCSV(){
+    const rows = [['Date','Name','Phone','Address','Occupation','Referred By','Amount','Payment ID','Status','Verified']];
+    allRecords.forEach(r => {
+      const date = r.createdAt && r.createdAt.toDate ? r.createdAt.toDate().toLocaleDateString('en-IN') : '-';
+      const referrer = r.referrerName ? (r.referrerName + (r.referrerRelation ? ' ('+r.referrerRelation+')' : '')) : '-';
+      rows.push([date, r.name||'', r.phone||'', r.permanentAddress||'', r.occupation||'', referrer, r.amount||0, r.paymentId||'', r.status||'', r.adminVerified?'Yes':'No']);
+    });
+    const csv = rows.map(row => row.map(cell => `"${String(cell).replace(/"/g,'""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'registrations.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+</script>
+</body>
+</html>
