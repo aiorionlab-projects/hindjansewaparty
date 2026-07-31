@@ -14,8 +14,7 @@ import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 // (Settings -> API Keys). Keep it as a *test* key ("rzp_test_...") until
 // you are ready to go live with real payments.
 // ---------------------------------------------------------------------
-const RAZORPAY_KEY_ID = "rzp_test_YOUR_KEY_ID";
-
+const RAZORPAY_KEY_ID = "rzp_test_TKEgOsRgPcjvL5";
 /* ----------------------------------------------------------------------
    TOKENS
    Colour  — navy #0B1B33 (ink / structure), saffron #FF6A13 (primary
