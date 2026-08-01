@@ -1206,11 +1206,9 @@ export default function HindJanSeviParty() {
       <Navbar onOpenForm={() => setFormOpen(true)} onOpenDonate={() => setDonateOpen(true)} />
       <Hero onOpenForm={() => setFormOpen(true)} onOpenDonate={() => setDonateOpen(true)} />
 
-      <div className="h-16 md:h-20" />
-
-      <OriginNGO />
-      <Divider />
       <Manifesto />
+      <Divider />
+      <OriginNGO />
       <Divider />
       <Achievements />
       <Divider />
