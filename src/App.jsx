@@ -238,7 +238,7 @@ function Emblem({ size = 44, animated = false }) {
   return (
     <div
       role="img"
-      aria-label="Hind Jan Sevi Party emblem"
+      aria-label="Hind Jan Sewi Party emblem"
       className={`emblem-box ${animated ? "emblem-spin" : ""}`}
       style={{
         width: size,
@@ -314,7 +314,7 @@ function TopBar({ lang, setLang }) {
             <Phone size={13} /> +91 77548 09948
           </a>
           <span className="flex items-center gap-1.5 text-white-70">
-            <Mail size={13} /> sampark@hindjansevi.org
+            <Mail size={13} /> sampark@hindjansewi.org
           </span>
         </div>
         <div className="flex items-center gap-4">
@@ -370,7 +370,7 @@ function Navbar({ onOpenForm, onOpenDonate }) {
             <div className="leading-tight">
               <div className="display text-lg md:text-xl font-bold text-navy hi">हिंद जनसेवी पार्टी</div>
               <div className="text-xs uppercase text-saffron-deep font-semibold" style={{ letterSpacing: "0.04em" }}>
-                Hind Jan Sevi Party
+                Hind Jan Sewi Party
               </div>
             </div>
           </div>
@@ -1180,7 +1180,7 @@ function Footer({ onOpenForm }) {
           <ul className="space-y-3 text-sm text-white-60">
             <li className="flex items-start gap-2"><Phone size={15} style={{ marginTop: 2, flexShrink: 0 }} /> +91 63885 51383</li>
             <li className="flex items-start gap-2"><Phone size={15} style={{ marginTop: 2, flexShrink: 0 }} /> +91 77548 09948</li>
-            <li className="flex items-start gap-2"><Mail size={15} style={{ marginTop: 2, flexShrink: 0 }} /> sampark@hindjansevi.org</li>
+            <li className="flex items-start gap-2"><Mail size={15} style={{ marginTop: 2, flexShrink: 0 }} /> sampark@hindjansewi.org</li>
             <li className="flex items-start gap-2 hi"><MapPin size={15} style={{ marginTop: 2, flexShrink: 0 }} /> केंद्रीय कार्यालय, नई दिल्ली, भारत</li>
           </ul>
         </div>
@@ -1238,13 +1238,28 @@ function Footer({ onOpenForm }) {
         <span>© 2026 हिंद जनसेवी पार्टी। सर्वाधिकार सुरक्षित।</span>
         <span>भारत निर्वाचन आयोग के दिशानिर्देशों के अनुरूप।</span>
       </div>
+
+      <div className="max-w-7xl mx-auto mt-4 text-center text-xs text-white-40">
+        <span>
+          Developed by{" "}
+          <a
+            href="https://aiorionlabs.in"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="footer-link focus-ring rounded"
+            style={{ fontWeight: 600 }}
+          >
+            AI Orion Labs
+          </a>
+        </span>
+      </div>
     </footer>
   );
 }
 
 /* ---------------------------------- app root ---------------------------------- */
 
-export default function HindJanSeviParty() {
+export default function HindJanSewiParty() {
   const [lang, setLang] = useState("hi");
   const [formOpen, setFormOpen] = useState(false);
   const [donateOpen, setDonateOpen] = useState(false);
