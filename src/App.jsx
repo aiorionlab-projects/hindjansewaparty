@@ -14,7 +14,8 @@ import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 // (Settings -> API Keys). Keep it as a *test* key ("rzp_test_...") until
 // you are ready to go live with real payments.
 // ---------------------------------------------------------------------
-const RAZORPAY_KEY_ID = "rzp_test_TKEgOsRgPcjvL5";
+const RAZORPAY_KEY_ID = "rzp_test_YOUR_KEY_ID";
+
 /* ----------------------------------------------------------------------
    TOKENS
    Colour  — navy #0B1B33 (ink / structure), saffron #FF6A13 (primary
@@ -290,7 +291,17 @@ const PRESS = [
   { date: "29 जून 2026", title: "पार्टी घोषणा पत्र समिति की पहली बैठक संपन्न" },
 ];
 
-const GALLERY = Array.from({ length: 6 }).map((_, i) => i);
+// Placeholder gallery imagery (Lorem Picsum — free-to-use placeholder photo
+// service, safe for this kind of use). Replace these with your own event
+// photos/videos whenever you have them — just swap the `img` URL per item.
+const GALLERY = [
+  { img: "https://picsum.photos/id/1076/500/500", isVideo: false },
+  { img: "https://picsum.photos/id/1027/500/500", isVideo: true },
+  { img: "https://picsum.photos/id/1074/500/500", isVideo: false },
+  { img: "https://picsum.photos/id/1062/500/500", isVideo: false },
+  { img: "https://picsum.photos/id/1005/500/500", isVideo: true },
+  { img: "https://picsum.photos/id/1011/500/500", isVideo: false },
+];
 
 /* --------------------------------- top bar -------------------------------- */
 
@@ -311,8 +322,13 @@ function TopBar({ lang, setLang }) {
         </div>
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-3">
-            {[Facebook, Twitter, Instagram, Youtube].map((Icon, i) => (
-              <a key={i} href="#" aria-label="social link" className="social-link focus-ring rounded">
+            {[
+              { Icon: Mail, href: "mailto:satyadhamsewasamiti@gmail.com", label: "Email" },
+              { Icon: Instagram, href: "https://instagram.com/hindjansewiparty/", label: "Instagram" },
+              { Icon: Twitter, href: "https://twitter.com/hindjansewiparty", label: "Twitter" },
+              { Icon: Youtube, href: "https://youtube.com/@hindjansewiparty", label: "YouTube" },
+            ].map(({ Icon, href, label }, i) => (
+              <a key={i} href={href} target="_blank" rel="noopener noreferrer" aria-label={label} className="social-link focus-ring rounded">
                 <Icon size={14} />
               </a>
             ))}
@@ -532,6 +548,64 @@ function Divider() {
 
 /* --------------------------------- manifesto -------------------------------- */
 
+/* ------------------------------- origin / ngo initiative ------------------------------ */
+
+const NGO_SECTORS = [
+  { icon: GraduationCap, hi: "शिक्षा", en: "Education" },
+  { icon: Stethoscope, hi: "स्वास्थ्य", en: "Health" },
+  { icon: HeartHandshake, hi: "सामाजिक सेवा", en: "Social Welfare" },
+  { icon: ShieldCheck, hi: "पारदर्शी शासन", en: "Good Governance" },
+];
+
+function OriginNGO() {
+  return (
+    <section className="bg-white pt-24 md:pt-28 pb-24 px-5 md:px-6">
+      <div className="max-w-5xl mx-auto">
+        <Reveal className="text-center max-w-2xl mx-auto">
+          <span className="text-saffron-deep text-xs font-bold uppercase" style={{ letterSpacing: "0.2em" }}>हमारी उत्पत्ति</span>
+          <h2 className="display hi text-3xl md:text-4xl font-extrabold text-navy mt-3">एक सेवा-भाव से जन्मी राजनीतिक पहल</h2>
+          <p className="hi text-navy-65 text-sm md:text-base mt-4 leading-relaxed">
+            हिंद जनसेवी पार्टी कोई अचानक बना संगठन नहीं, बल्कि वर्षों की जमीनी सेवा से उपजी एक पहल है।
+          </p>
+        </Reveal>
+
+        <Reveal delay={100}>
+          <div className="manifesto-card rounded-2xl p-7 md:p-9 border border-navy-08 mt-12">
+            <div className="flex flex-col md:flex-row md:items-start gap-6">
+              <div className="bg-ember-10 w-14 h-14 rounded-xl flex items-center justify-center text-ember" style={{ flexShrink: 0 }}>
+                <HeartHandshake size={26} />
+              </div>
+              <div>
+                <h3 className="hi display font-bold text-xl text-navy">श्री अम्बिका सत्याधाम सेवा समिति</h3>
+                <p className="text-xs text-navy-40 font-semibold uppercase mt-1" style={{ letterSpacing: "0.04em" }}>
+                  Shri Ambika Satyadham Sewa Samiti · Reg. No. 1983/2011-2012
+                </p>
+                <p className="hi text-sm md:text-base text-navy-65 mt-4 leading-relaxed">
+                  हिंद जनसेवी पार्टी, श्री अम्बिका सत्याधाम सेवा समिति द्वारा शुरू की गई एक पहल है — यह पंजीकृत सामाजिक संस्था वर्षों से शिक्षा, स्वास्थ्य और सामाजिक सेवा के क्षेत्र में जमीनी स्तर पर कार्य करती रही है। इसी सेवा-भावना और अनुभव को राजनीतिक मंच के माध्यम से आगे बढ़ाते हुए, पार्टी का घोषणा पत्र समाज के हर वर्ग — शिक्षा, स्वास्थ्य, कृषि, आवास और समानता — तक सेवा पहुँचाने के संकल्प पर आधारित है।
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8">
+              {NGO_SECTORS.map((s, i) => (
+                <Reveal key={s.en} delay={150 + i * 80}>
+                  <div className="bg-cream rounded-xl p-4 text-center h-full">
+                    <div className="text-ember flex items-center justify-center">
+                      <s.icon size={22} />
+                    </div>
+                    <div className="hi font-semibold text-navy text-sm mt-2">{s.hi}</div>
+                    <div className="text-[11px] uppercase text-navy-40 font-semibold" style={{ letterSpacing: "0.03em" }}>{s.en}</div>
+                  </div>
+                </Reveal>
+              ))}
+            </div>
+          </div>
+        </Reveal>
+      </div>
+    </section>
+  );
+}
+
 function Manifesto() {
   return (
     <section id="manifesto" className="bg-white pt-24 md:pt-28 pb-24 px-5 md:px-6">
@@ -648,9 +722,14 @@ function PressMedia() {
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4 max-w-4xl mx-auto">
               {GALLERY.map((g, i) => (
-                <Reveal key={g} delay={i * 60}>
-                  <div className="gallery-tile aspect-square rounded-xl flex items-center justify-center">
-                    {i % 3 === 0 ? <PlayCircle size={30} /> : <ImageIcon size={26} />}
+                <Reveal key={g.img} delay={i * 60}>
+                  <div className="gallery-tile aspect-square rounded-xl overflow-hidden relative">
+                    <img src={g.img} alt="गैलरी" className="w-full h-full object-cover" loading="lazy" />
+                    {g.isVideo && (
+                      <div className="absolute inset-0 flex items-center justify-center" style={{ background: "rgba(11,27,51,0.35)" }}>
+                        <PlayCircle size={34} color="#fff" />
+                      </div>
+                    )}
                   </div>
                 </Reveal>
               ))}
@@ -911,12 +990,26 @@ function Field({ label, children, span2 }) {
 /* -------------------------------- donate modal -------------------------------- */
 
 function DonateModal({ open, onClose }) {
-  const amounts = [501, 1100, 2100, 5100];
-  const [selected, setSelected] = useState(1100);
+  const suggestions = [101, 501, 1100, 2100];
+  const [amount, setAmount] = useState("");
   const [done, setDone] = useState(false);
+  const [error, setError] = useState("");
 
-  useEffect(() => { if (!open) setDone(false); }, [open]);
+  useEffect(() => { if (!open) { setDone(false); setAmount(""); setError(""); } }, [open]);
   if (!open) return null;
+
+  const handleDonate = () => {
+    const value = parseInt(amount, 10);
+    if (!value || value < 1) {
+      setError("कृपया एक मान्य राशि दर्ज करें (Please enter a valid amount)");
+      return;
+    }
+    setError("");
+    // NOTE: this currently just shows a thank-you screen. Wire this up to
+    // Razorpay + Firestore the same way MembershipModal is wired, if you
+    // want donations to actually be charged and recorded.
+    setDone(true);
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center px-5">
@@ -937,25 +1030,52 @@ function DonateModal({ open, onClose }) {
               <Check size={26} />
             </div>
             <h3 className="hi display font-bold text-lg text-navy mt-4">धन्यवाद!</h3>
-            <p className="hi text-sm text-navy-65 mt-2">आपका सहयोग जनसेवा को और मज़बूत करेगा।</p>
+            <p className="hi text-sm text-navy-65 mt-2">आपका ₹{parseInt(amount, 10).toLocaleString("en-IN")} का सहयोग जनसेवा को और मज़बूत करेगा।</p>
             <button onClick={onClose} className="btn-primary mt-6 px-6 py-2.5 rounded-full font-semibold focus-ring">बंद करें</button>
           </div>
         ) : (
           <div className="p-6">
-            <p className="hi text-sm text-navy-65">राशि चुनें (₹)</p>
-            <div className="grid grid-cols-2 gap-3 mt-3">
-              {amounts.map((a) => (
+            <p className="hi text-sm text-navy-65">आप जितना उचित समझें, उतनी राशि दान करें (Donate any amount you'd like)</p>
+
+            {error && (
+              <div className="text-sm rounded-lg px-4 py-2.5 mt-3" style={{ background: "#FEE2E2", color: "#B91C1C" }}>
+                {error}
+              </div>
+            )}
+
+            <div className="mt-4">
+              <label className="hi text-xs font-semibold text-navy-65">राशि दर्ज करें (₹)</label>
+              <div className="flex items-center mt-1.5 field-input" style={{ padding: 0 }}>
+                <span className="pl-4 pr-1 text-navy-50 font-semibold">₹</span>
+                <input
+                  type="number"
+                  min="1"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  placeholder="जैसे: 251"
+                  className="w-full py-3 pr-4 bg-transparent focus:outline-none font-semibold text-navy"
+                  style={{ border: "none" }}
+                  autoFocus
+                />
+              </div>
+            </div>
+
+            <p className="hi text-xs text-navy-50 mt-4">सुझाई गई राशियाँ (Suggestions — tap to fill in)</p>
+            <div className="grid grid-cols-4 gap-2 mt-2">
+              {suggestions.map((a) => (
                 <button
                   key={a}
-                  onClick={() => setSelected(a)}
-                  className={`amount-btn py-3 rounded-xl font-semibold text-sm focus-ring ${selected === a ? "active" : ""}`}
+                  type="button"
+                  onClick={() => setAmount(String(a))}
+                  className={`amount-btn py-2.5 rounded-xl font-semibold text-xs focus-ring ${String(a) === amount ? "active" : ""}`}
                 >
                   ₹{a.toLocaleString("en-IN")}
                 </button>
               ))}
             </div>
-            <button onClick={() => setDone(true)} className="btn-primary w-full mt-6 py-3.5 rounded-full font-bold focus-ring">
-              ₹{selected.toLocaleString("en-IN")} का सहयोग दें
+
+            <button onClick={handleDonate} className="btn-primary w-full mt-6 py-3.5 rounded-full font-bold focus-ring">
+              {amount ? `₹${(parseInt(amount, 10) || 0).toLocaleString("en-IN")} का सहयोग दें` : "सहयोग दें"}
             </button>
           </div>
         )}
@@ -994,8 +1114,13 @@ function Footer() {
             जनसेवा ही सर्वोपरि धर्म — पारदर्शी, समावेशी और जवाबदेह राजनीति के लिए प्रतिबद्ध।
           </p>
           <div className="flex items-center gap-3 mt-5">
-            {[Facebook, Twitter, Instagram, Youtube].map((Icon, i) => (
-              <a key={i} href="#" aria-label="social" className="social-circle w-9 h-9 rounded-full flex items-center justify-center focus-ring">
+            {[
+              { Icon: Mail, href: "mailto:satyadhamsewasamiti@gmail.com", label: "Email" },
+              { Icon: Instagram, href: "https://instagram.com/hindjansewiparty/", label: "Instagram" },
+              { Icon: Twitter, href: "https://twitter.com/hindjansewiparty", label: "Twitter" },
+              { Icon: Youtube, href: "https://youtube.com/@hindjansewiparty", label: "YouTube" },
+            ].map(({ Icon, href, label }, i) => (
+              <a key={i} href={href} target="_blank" rel="noopener noreferrer" aria-label={label} className="social-circle w-9 h-9 rounded-full flex items-center justify-center focus-ring">
                 <Icon size={15} />
               </a>
             ))}
@@ -1037,7 +1162,31 @@ function Footer() {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto border-t border-white-10 mt-12 pt-6 text-xs text-white-40 hi flex flex-col sm:flex-row items-center justify-between gap-2">
+      <div className="max-w-7xl mx-auto border-t border-white-10 mt-10 pt-8">
+        <h4 className="hi font-semibold text-white mb-3">पंजीकृत सामाजिक संस्था (Registered NGO)</h4>
+        <div className="grid sm:grid-cols-2 gap-6 text-sm text-white-60 hi">
+          <div className="space-y-2">
+            <p className="text-white-80 font-medium">श्री अम्बिका सत्याधाम सेवा समिति</p>
+            <p>Shri Ambika Satyadham Sewa Samiti</p>
+            <p>पंजीकरण क्रमांक (Reg. No.): 1983/2011-2012</p>
+            <p className="flex items-start gap-2"><Mail size={15} style={{ marginTop: 2, flexShrink: 0 }} /> satyadhamsewasamiti@gmail.com</p>
+          </div>
+          <div className="space-y-3">
+            <p className="flex items-start gap-2">
+              <MapPin size={15} style={{ marginTop: 2, flexShrink: 0 }} />
+              <span>महुलानी, नौगढ़, सिद्धार्थनगर, उत्तर प्रदेश<br />Mahulani, Naugarh, Siddharthnagar, Uttar Pradesh</span>
+            </p>
+            <p className="flex items-start gap-2">
+              <MapPin size={15} style={{ marginTop: 2, flexShrink: 0 }} />
+              <span>
+                लखनऊ कार्यालय — <em className="text-white-40 not-italic">[पता जल्द जोड़ा जाएगा / Lucknow office address to be added]</em>
+              </span>
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto border-t border-white-10 mt-8 pt-6 text-xs text-white-40 hi flex flex-col sm:flex-row items-center justify-between gap-2">
         <span>© 2026 हिंद जनसेवी पार्टी। सर्वाधिकार सुरक्षित।</span>
         <span>भारत निर्वाचन आयोग के दिशानिर्देशों के अनुरूप।</span>
       </div>
@@ -1062,6 +1211,8 @@ export default function HindJanSeviParty() {
 
       <div className="h-16 md:h-20" />
 
+      <OriginNGO />
+      <Divider />
       <Manifesto />
       <Divider />
       <Achievements />
