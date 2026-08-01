@@ -441,9 +441,6 @@ function Navbar({ onOpenForm, onOpenDonate }) {
 /* ---------------------------------- hero ---------------------------------- */
 
 function Hero({ onOpenForm, onOpenDonate }) {
-  const scrollToManifesto = () => {
-    document.getElementById("manifesto")?.scrollIntoView({ behavior: "smooth" });
-  };
   return (
     <section id="top" className="relative overflow-hidden bg-navy">
       <div
@@ -458,7 +455,7 @@ function Hero({ onOpenForm, onOpenDonate }) {
         <Emblem size={420} animated />
       </div>
 
-      <div className="relative max-w-7xl mx-auto px-5 md:px-6 pt-16 pb-28 md:pt-24 md:pb-56">
+      <div className="relative max-w-7xl mx-auto px-5 md:px-6 pt-16 pb-16 md:pt-24 md:pb-24">
         <Reveal>
           <span
             className="inline-flex items-center gap-2 text-gold text-xs font-semibold uppercase border border-gold-40 rounded-full px-4 py-1.5"
@@ -491,26 +488,24 @@ function Hero({ onOpenForm, onOpenDonate }) {
           </div>
         </Reveal>
       </div>
-
-      {/* floating action cards */}
-      <div className="relative max-w-7xl mx-auto px-5 md:px-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 pb-10 md:pb-0" style={{ position: "relative" }}>
-          <div className="md:hidden" />
-          <div className="hidden md:block" style={{ position: "absolute", bottom: "-3rem", left: "1.5rem", right: "1.5rem" }}>
-            <div className="grid grid-cols-3 gap-5">
-              <FloatCard icon={Users} title="सदस्य पंजीकरण" sub="Member Registration" body="पार्टी से जुड़ें और बदलाव की मुहिम का हिस्सा बनें।" action={onOpenForm} delay={0} />
-              <FloatCard icon={HeartHandshake} title="सहयोग राशि" sub="Support / Donation" body="आपका योगदान जनसेवा के हर कदम को मज़बूत करता है।" action={onOpenDonate} delay={120} />
-              <FloatCard icon={FileText} title="घोषणा पत्र" sub="Manifesto Highlights" body="शिक्षा, स्वास्थ्य व पारदर्शिता — हमारे मुख्य संकल्प।" action={scrollToManifesto} delay={240} />
-            </div>
-          </div>
-          <div className="grid grid-cols-1 gap-5 md:hidden">
-            <FloatCard icon={Users} title="सदस्य पंजीकरण" sub="Member Registration" body="पार्टी से जुड़ें और बदलाव की मुहिम का हिस्सा बनें।" action={onOpenForm} delay={0} />
-            <FloatCard icon={HeartHandshake} title="सहयोग राशि" sub="Support / Donation" body="आपका योगदान जनसेवा के हर कदम को मज़बूत करता है।" action={onOpenDonate} delay={120} />
-            <FloatCard icon={FileText} title="घोषणा पत्र" sub="Manifesto Highlights" body="शिक्षा, स्वास्थ्य व पारदर्शिता — हमारे मुख्य संकल्प।" action={scrollToManifesto} delay={240} />
-          </div>
-        </div>
-      </div>
     </section>
+  );
+}
+
+/* ------------------------- quick action cards (below manifesto) ------------------------- */
+
+function QuickActionCards({ onOpenForm, onOpenDonate }) {
+  const scrollToManifesto = () => {
+    document.getElementById("manifesto")?.scrollIntoView({ behavior: "smooth" });
+  };
+  return (
+    <div className="relative max-w-7xl mx-auto px-5 md:px-6 pb-20 md:pb-24">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        <FloatCard icon={Users} title="सदस्य पंजीकरण" sub="Member Registration" body="पार्टी से जुड़ें और बदलाव की मुहिम का हिस्सा बनें।" action={onOpenForm} delay={0} />
+        <FloatCard icon={HeartHandshake} title="सहयोग राशि" sub="Support / Donation" body="आपका योगदान जनसेवा के हर कदम को मज़बूत करता है।" action={onOpenDonate} delay={120} />
+        <FloatCard icon={FileText} title="घोषणा पत्र" sub="Manifesto Highlights" body="शिक्षा, स्वास्थ्य व पारदर्शिता — हमारे मुख्य संकल्प।" action={scrollToManifesto} delay={240} />
+      </div>
+    </div>
   );
 }
 
@@ -1209,6 +1204,7 @@ export default function HindJanSeviParty() {
       <Hero onOpenForm={() => setFormOpen(true)} onOpenDonate={() => setDonateOpen(true)} />
 
       <Manifesto />
+      <QuickActionCards onOpenForm={() => setFormOpen(true)} onOpenDonate={() => setDonateOpen(true)} />
       <Divider />
       <OriginNGO />
       <Divider />
