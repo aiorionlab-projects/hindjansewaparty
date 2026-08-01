@@ -265,17 +265,16 @@ const NAV_LINKS = [
 ];
 
 const MANIFESTO = [
-  { n: 1, hi: "आर्थिक उन्नयन", body: "आर्थिक रूप से सक्षम OBC, SC/ST वर्ग को सामान्य वर्ग में लाना।" },
-  { n: 2, hi: "आरक्षण", body: "आरक्षण की मौजूदा व्यवस्था को समाप्त कर, नौकरी व शिक्षा में प्रतिभा (योग्यता) के आधार पर अवसर देना।" },
-  { n: 3, hi: "नौकरी", body: "योग्यता के आधार पर नौकरियों में नियुक्ति सुनिश्चित करना।" },
-  { n: 4, hi: "शिक्षा", body: "समानता के आधार पर सभी को निःशुल्क व गुणवत्तापूर्ण शिक्षा उपलब्ध कराना।" },
-  { n: 5, hi: "स्वास्थ्य", body: "सभी नागरिकों को ₹5 लाख तक की निःशुल्क स्वास्थ्य बीमा सुविधा देना।" },
-  { n: 6, hi: "कृषि", body: "किसानों को अपनी उपज का समर्थन मूल्य स्वयं निर्धारित करने का अधिकार देना।" },
-  { n: 7, hi: "विद्यालय", body: "स्कूलों में धार्मिक आधार पर भेदभाव समाप्त कर, सभी धर्मों को पढ़ाने का समान अधिकार सुनिश्चित करते हुए सरकारी हस्तक्षेप को हटाना।" },
-  { n: 8, hi: "मंदिर", body: "सभी धर्मस्थलों के प्रबंधन को सुनिश्चित करते हुए सरकारी हस्तक्षेप को हटाना।" },
-  { n: 9, hi: "आवास", body: "सभी गरीबों को आवास दिलाना।" },
-  { n: 10, hi: "समानता का अधिकार", body: "समान कार्य के लिए समान वेतन लागू करना।" },
-  
+  { n: 1, hi: "आरक्षण", body: "आरक्षण की मौजूदा व्यवस्था को समाप्त कर, नौकरी व शिक्षा में प्रतिभा (योग्यता) के आधार पर अवसर देना।" },
+  { n: 2, hi: "नौकरी", body: "योग्यता के आधार पर नौकरियों में नियुक्ति सुनिश्चित करना।" },
+  { n: 3, hi: "शिक्षा", body: "समानता के आधार पर सभी को निःशुल्क व गुणवत्तापूर्ण शिक्षा उपलब्ध कराना।" },
+  { n: 4, hi: "स्वास्थ्य", body: "सभी नागरिकों को ₹5 लाख तक की निःशुल्क स्वास्थ्य बीमा सुविधा देना।" },
+  { n: 5, hi: "कृषि", body: "किसानों को अपनी उपज का समर्थन मूल्य स्वयं निर्धारित करने का अधिकार देना।" },
+  { n: 6, hi: "विद्यालय", body: "स्कूलों में धार्मिक आधार पर भेदभाव समाप्त कर, सभी धर्मों को पढ़ाने का समान अधिकार सुनिश्चित करते हुए सरकारी हस्तक्षेप को हटाना।" },
+  { n: 7, hi: "मंदिर", body: "सभी धर्मस्थलों के प्रबंधन को सुनिश्चित करते हुए सरकारी हस्तक्षेप को हटाना।" },
+  { n: 8, hi: "आवास", body: "सभी गरीबों को आवास दिलाना।" },
+  { n: 9, hi: "समानता का अधिकार", body: "समान कार्य के लिए समान वेतन लागू करना।" },
+  { n: 10, hi: "आर्थिक उन्नयन", body: "आर्थिक रूप से सक्षम OBC, SC/ST वर्ग को सामान्य वर्ग में लाना।" },
 ];
 
 const ACHIEVEMENTS = [
@@ -661,6 +660,60 @@ function Achievements() {
             </Reveal>
           ))}
         </div>
+      </div>
+    </section>
+  );
+}
+
+/* --------------------------------- trust stats ------------------------------ */
+
+function CountUp({ target, suffix = "", duration = 1800 }) {
+  const [ref, visible] = useReveal();
+  const [value, setValue] = useState(0);
+  useEffect(() => {
+    if (!visible) return;
+    let start = null;
+    let raf;
+    const step = (ts) => {
+      if (start === null) start = ts;
+      const progress = Math.min((ts - start) / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3); // ease-out cubic
+      setValue(Math.round(eased * target));
+      if (progress < 1) raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [visible, target, duration]);
+  return (
+    <span ref={ref} className="tabular-nums">
+      {value.toLocaleString("en-IN")}{suffix}
+    </span>
+  );
+}
+
+const TRUST_STATS = [
+  { target: 1200, suffix: "+", hi: "पंजीकृत सदस्य", en: "Registered Members" },
+  { target: 50, suffix: "+", hi: "जिलों में उपस्थिति", en: "Districts Covered" },
+  { target: 1200, suffix: "+", hi: "स्वयंसेवक", en: "Volunteers" },
+  { target: 12, suffix: "+", hi: "वर्षों की सेवा", en: "Years of Service" },
+];
+
+function TrustStats() {
+  return (
+    <section className="bg-navy py-16 px-5 md:px-6">
+      <div className="max-w-7xl mx-auto grid grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
+        {TRUST_STATS.map((s, i) => (
+          <Reveal key={s.en} delay={i * 100} className="text-center">
+            <div
+              className="display font-extrabold text-saffron"
+              style={{ fontSize: "clamp(2rem, 5vw, 2.75rem)", lineHeight: 1 }}
+            >
+              <CountUp target={s.target} suffix={s.suffix} />
+            </div>
+            <div className="hi text-white font-semibold mt-2 text-sm md:text-base">{s.hi}</div>
+            <div className="text-white-70 text-xs uppercase mt-1" style={{ letterSpacing: "0.1em" }}>{s.en}</div>
+          </Reveal>
+        ))}
       </div>
     </section>
   );
@@ -1206,6 +1259,7 @@ export default function HindJanSeviParty() {
 
       <Manifesto />
       <QuickActionCards onOpenForm={() => setFormOpen(true)} onOpenDonate={() => setDonateOpen(true)} />
+      <TrustStats />
       <Divider />
       <OriginNGO />
       <Divider />
