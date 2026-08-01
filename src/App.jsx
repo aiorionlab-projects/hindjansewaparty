@@ -291,16 +291,13 @@ const PRESS = [
   { date: "29 जून 2026", title: "पार्टी घोषणा पत्र समिति की पहली बैठक संपन्न" },
 ];
 
-// Placeholder gallery imagery (Lorem Picsum — free-to-use placeholder photo
-// service, safe for this kind of use). Replace these with your own event
-// photos/videos whenever you have them — just swap the `img` URL per item.
+// Gallery imagery — provided by the user.
 const GALLERY = [
-  { img: "https://picsum.photos/id/1076/500/500", isVideo: false },
-  { img: "https://picsum.photos/id/1027/500/500", isVideo: true },
-  { img: "https://picsum.photos/id/1074/500/500", isVideo: false },
-  { img: "https://picsum.photos/id/1062/500/500", isVideo: false },
-  { img: "https://picsum.photos/id/1005/500/500", isVideo: true },
-  { img: "https://picsum.photos/id/1011/500/500", isVideo: false },
+  { img: "/gallery/g1.jpg", isVideo: false },
+  { img: "/gallery/g6.jpg", isVideo: false },
+  { img: "/gallery/g5.jpg", isVideo: false },
+  { img: "/gallery/g4.jpg", isVideo: false },
+  { img: "/gallery/g2.jpg", isVideo: false },
 ];
 
 /* --------------------------------- top bar -------------------------------- */
