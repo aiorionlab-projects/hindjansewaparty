@@ -257,10 +257,10 @@ function Emblem({ size = 44, animated = false }) {
 /* --------------------------------- data --------------------------------- */
 
 const NAV_LINKS = [
-  { hi: "होम", en: "Home", href: "#" },
-  { hi: "इतिहास व विचार", en: "About", href: "#" },
+  { hi: "होम", en: "Home", href: "#top" },
+  { hi: "इतिहास व विचार", en: "About", href: "#about" },
   { hi: "घोषणा पत्र", en: "Manifesto", href: "#manifesto" },
-  { hi: "मीडिया", en: "Media", href: "#" },
+  { hi: "मीडिया", en: "Media", href: "#media" },
   { hi: "नेतृत्व", en: "Leadership", href: "#" },
 ];
 
@@ -321,6 +321,7 @@ function TopBar({ lang, setLang }) {
           <div className="flex items-center gap-3">
             {[
               { Icon: Mail, href: "mailto:satyadhamsewasamiti@gmail.com", label: "Email" },
+              { Icon: Facebook, href: "https://www.facebook.com/share/18xEnGNvvZ/", label: "Facebook" },
               { Icon: Instagram, href: "https://instagram.com/hindjansewiparty/", label: "Instagram" },
               { Icon: Twitter, href: "https://twitter.com/hindjansewiparty", label: "Twitter" },
               { Icon: Youtube, href: "https://youtube.com/@hindjansewiparty", label: "YouTube" },
@@ -444,7 +445,7 @@ function Hero({ onOpenForm, onOpenDonate }) {
     document.getElementById("manifesto")?.scrollIntoView({ behavior: "smooth" });
   };
   return (
-    <section className="relative overflow-hidden bg-navy">
+    <section id="top" className="relative overflow-hidden bg-navy">
       <div
         className="absolute inset-0"
         style={{
@@ -556,7 +557,7 @@ const NGO_SECTORS = [
 
 function OriginNGO() {
   return (
-    <section className="bg-white pt-24 md:pt-28 pb-24 px-5 md:px-6">
+    <section id="about" className="bg-white pt-24 md:pt-28 pb-24 px-5 md:px-6">
       <div className="max-w-5xl mx-auto">
         <Reveal className="text-center max-w-2xl mx-auto">
           <span className="text-saffron-deep text-xs font-bold uppercase" style={{ letterSpacing: "0.2em" }}>हमारी उत्पत्ति</span>
@@ -674,7 +675,7 @@ function Achievements() {
 function PressMedia() {
   const [tab, setTab] = useState("press");
   return (
-    <section className="bg-navy py-24 px-5 md:px-6">
+    <section id="media" className="bg-navy py-24 px-5 md:px-6">
       <div className="max-w-7xl mx-auto">
         <Reveal className="text-center">
           <span className="text-gold text-xs font-bold uppercase" style={{ letterSpacing: "0.2em" }}>जुड़े रहें</span>
@@ -1098,7 +1099,7 @@ function FloatingActionBar({ onOpenForm, onOpenDonate }) {
 
 /* ----------------------------------- footer ---------------------------------- */
 
-function Footer() {
+function Footer({ onOpenForm }) {
   return (
     <footer className="bg-navy-soft text-white-70 pt-16 pb-8 px-5 md:px-6">
       <div className="max-w-7xl mx-auto grid md:grid-cols-4 gap-10">
@@ -1113,6 +1114,7 @@ function Footer() {
           <div className="flex items-center gap-3 mt-5">
             {[
               { Icon: Mail, href: "mailto:satyadhamsewasamiti@gmail.com", label: "Email" },
+              { Icon: Facebook, href: "https://www.facebook.com/share/18xEnGNvvZ/", label: "Facebook" },
               { Icon: Instagram, href: "https://instagram.com/hindjansewiparty/", label: "Instagram" },
               { Icon: Twitter, href: "https://twitter.com/hindjansewiparty", label: "Twitter" },
               { Icon: Youtube, href: "https://youtube.com/@hindjansewiparty", label: "YouTube" },
@@ -1138,14 +1140,14 @@ function Footer() {
           <h4 className="hi font-semibold text-white mb-4">त्वरित लिंक</h4>
           <ul className="space-y-3 text-sm text-white-60 hi">
             {[
-              { label: "इतिहास व विचार", href: "#" },
+              { label: "इतिहास व विचार", href: "#about" },
               { label: "घोषणा पत्र", href: "#manifesto" },
-              { label: "प्रेस विज्ञप्ति", href: "#" },
+              { label: "प्रेस विज्ञप्ति", href: "#media" },
               { label: "नेतृत्व", href: "#" },
-              { label: "सदस्यता लें", href: "#" },
             ].map((l) => (
               <li key={l.label}><a href={l.href} className="footer-link focus-ring rounded">{l.label}</a></li>
             ))}
+            <li><button onClick={onOpenForm} className="footer-link focus-ring rounded" style={{ background: "none", border: "none", padding: 0, cursor: "pointer", font: "inherit" }}>सदस्यता लें</button></li>
           </ul>
         </div>
 
@@ -1213,7 +1215,7 @@ export default function HindJanSeviParty() {
       <Achievements />
       <Divider />
       <PressMedia />
-      <Footer />
+      <Footer onOpenForm={() => setFormOpen(true)} />
 
       <FloatingActionBar onOpenForm={() => setFormOpen(true)} onOpenDonate={() => setDonateOpen(true)} />
       <MembershipModal open={formOpen} onClose={() => setFormOpen(false)} />
