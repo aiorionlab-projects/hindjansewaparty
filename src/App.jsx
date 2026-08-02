@@ -293,11 +293,11 @@ const PRESS = [
 
 // Gallery imagery — provided by the user.
 const GALLERY = [
-  { img: "/gallery/g1.jpg", isVideo: false },
-  { img: "/gallery/g6.jpg", isVideo: false },
-  { img: "/gallery/g5.jpg", isVideo: false },
-  { img: "/gallery/g4.jpg", isVideo: false },
-  { img: "/gallery/g2.jpg", isVideo: false },
+  { img: "/gallery/g1.jpg", isVideo: false, caption: "हिन्द जनसेवी पार्टी की जनसभा में कार्यकर्ता और समर्थक" },
+  { img: "/gallery/g6.jpg", isVideo: false, caption: "पार्टी कार्यक्रम में मंच पर नेतागण" },
+  { img: "/gallery/g5.jpg", isVideo: false, caption: "जनसेवा अभियान के दौरान पार्टी सदस्य" },
+  { img: "/gallery/g4.jpg", isVideo: false, caption: "हिन्द जनसेवी पार्टी की सार्वजनिक सभा" },
+  { img: "/gallery/g2.jpg", isVideo: false, caption: "पार्टी बैठक में उपस्थित सदस्य" },
 ];
 
 /* --------------------------------- top bar -------------------------------- */
@@ -771,7 +771,7 @@ function PressMedia() {
               {GALLERY.map((g, i) => (
                 <Reveal key={g.img} delay={i * 60}>
                   <div className="gallery-tile aspect-square rounded-xl overflow-hidden relative">
-                    <img src={g.img} alt="गैलरी" className="w-full h-full object-cover" loading="lazy" />
+                    <img src={g.img} alt={g.caption} className="w-full h-full object-cover" loading="lazy" />
                     {g.isVideo && (
                       <div className="absolute inset-0 flex items-center justify-center" style={{ background: "rgba(11,27,51,0.35)" }}>
                         <PlayCircle size={34} color="#fff" />
