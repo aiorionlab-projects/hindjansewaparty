@@ -1079,24 +1079,136 @@ function Field({ label, children, span2 }) {
 
 function DonateModal({ open, onClose }) {
   const suggestions = [101, 501, 1100, 2100];
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
   const [amount, setAmount] = useState("");
   const [done, setDone] = useState(false);
   const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [paymentInfo, setPaymentInfo] = useState(null);
 
-  useEffect(() => { if (!open) { setDone(false); setAmount(""); setError(""); } }, [open]);
+  useEffect(() => {
+    if (!open) {
+      setDone(false); setAmount(""); setName(""); setPhone("");
+      setError(""); setSubmitting(false); setPaymentInfo(null);
+    }
+  }, [open]);
   if (!open) return null;
 
-  const handleDonate = () => {
+  // Writes the donation record to Firestore, in the same shape
+  // admin.html expects (name, phone, amount, paymentId, status, adminVerified,
+  // createdAt) plus a `type: "donation"` flag so it can be told apart from
+  // full memberships later if needed.
+  const saveDonation = async (donorName, donorPhone, donationAmount, paymentId) => {
+    await addDoc(collection(db, "registrations"), {
+      name: donorName,
+      phone: donorPhone,
+      amount: donationAmount,
+      paymentId,
+      status: "paid",
+      adminVerified: false,
+      type: "donation",
+      createdAt: serverTimestamp(),
+    });
+  };
+
+  const handleDonate = async () => {
+    setError("");
     const value = parseInt(amount, 10);
+
+    if (!name.trim()) {
+      setError("कृपया अपना नाम दर्ज करें (Please enter your name)");
+      return;
+    }
+    if (!/^[0-9]{10}$/.test(phone.trim())) {
+      setError("कृपया 10 अंकों का मान्य फोन नम्बर दर्ज करें (Please enter a valid 10-digit phone number)");
+      return;
+    }
     if (!value || value < 1) {
       setError("कृपया एक मान्य राशि दर्ज करें (Please enter a valid amount)");
       return;
     }
-    setError("");
-    // NOTE: this currently just shows a thank-you screen. Wire this up to
-    // Razorpay + Firestore the same way MembershipModal is wired, if you
-    // want donations to actually be charged and recorded.
-    setDone(true);
+
+    setSubmitting(true);
+    const ok = await loadRazorpayScript();
+    if (!ok || !window.Razorpay) {
+      setError("भुगतान गेटवे लोड नहीं हो सका। कृपया पुनः प्रयास करें। (Payment gateway failed to load, please retry.)");
+      setSubmitting(false);
+      return;
+    }
+
+    // 1) Create the order server-side (needs the secret key).
+    let order;
+    try {
+      const orderRes = await fetch("/api/create-order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount: value * 100, receipt: `hjsp_donate_${Date.now()}` }),
+      });
+      if (!orderRes.ok) {
+        const { error: msg } = await orderRes.json().catch(() => ({}));
+        throw new Error(msg || "Order creation failed");
+      }
+      order = await orderRes.json();
+    } catch (err) {
+      console.error("create-order failed:", err);
+      setError("भुगतान शुरू नहीं हो सका। कृपया पुनः प्रयास करें। (Could not start payment, please retry.)");
+      setSubmitting(false);
+      return;
+    }
+
+    const options = {
+      key: RAZORPAY_KEY_ID,
+      order_id: order.order_id,
+      amount: order.amount,
+      currency: order.currency,
+      name: "हिंद जनसेवी पार्टी / Hind Jansewi Party",
+      description: "Donation / सहयोग राशि",
+      prefill: { name, contact: phone },
+      theme: { color: "#0B1B33" },
+      handler: async function (response) {
+        try {
+          // 2) Verify the signature server-side before trusting the payment.
+          const verifyRes = await fetch("/api/verify-payment", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+            }),
+          });
+          const verifyData = await verifyRes.json().catch(() => ({}));
+
+          if (!verifyRes.ok || !verifyData.verified) {
+            setError("भुगतान सत्यापित नहीं हो सका। कृपया सहयोग टीम से संपर्क करें। (Payment could not be verified — please contact support.)");
+            setSubmitting(false);
+            return;
+          }
+
+          await saveDonation(name, phone, value, response.razorpay_payment_id);
+          setPaymentInfo({ paymentId: response.razorpay_payment_id, amount: value });
+          setDone(true);
+        } catch (err) {
+          console.error("Verification / Firestore write failed:", err);
+          setError("भुगतान सफल हुआ, लेकिन डेटा सहेजने में त्रुटि हुई। कृपया सहयोग टीम से संपर्क करें। (Payment succeeded but saving failed — please contact support.)");
+        } finally {
+          setSubmitting(false);
+        }
+      },
+      modal: {
+        ondismiss: function () {
+          setSubmitting(false);
+        },
+      },
+    };
+
+    const rzp = new window.Razorpay(options);
+    rzp.on("payment.failed", function (resp) {
+      setError("भुगतान असफल रहा: " + resp.error.description);
+      setSubmitting(false);
+    });
+    rzp.open();
   };
 
   return (
@@ -1117,8 +1229,11 @@ function DonateModal({ open, onClose }) {
             <div className="w-14 h-14 mx-auto rounded-full flex items-center justify-center" style={{ background: "#DCFCE7", color: "#16A34A" }}>
               <Check size={26} />
             </div>
-            <h3 className="hi display font-bold text-lg text-navy mt-4">धन्यवाद!</h3>
+            <h3 className="hi display font-bold text-lg text-navy mt-4">धन्यवाद, {name}!</h3>
             <p className="hi text-sm text-navy-65 mt-2">आपका ₹{parseInt(amount, 10).toLocaleString("en-IN")} का सहयोग जनसेवा को और मज़बूत करेगा।</p>
+            {paymentInfo && (
+              <p className="text-xs text-navy-50 mt-3">Payment ID: {paymentInfo.paymentId}</p>
+            )}
             <button onClick={onClose} className="btn-primary mt-6 px-6 py-2.5 rounded-full font-semibold focus-ring">बंद करें</button>
           </div>
         ) : (
@@ -1132,6 +1247,28 @@ function DonateModal({ open, onClose }) {
             )}
 
             <div className="mt-4">
+              <label className="hi text-xs font-semibold text-navy-65">नाम (Name)</label>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="आपका पूरा नाम"
+                className="field-input w-full mt-1.5 py-3 px-4 font-semibold text-navy"
+              />
+            </div>
+
+            <div className="mt-4">
+              <label className="hi text-xs font-semibold text-navy-65">फोन नम्बर (Phone Number)</label>
+              <input
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
+                placeholder="10 अंकों का मोबाइल नम्बर"
+                className="field-input w-full mt-1.5 py-3 px-4 font-semibold text-navy"
+              />
+            </div>
+
+            <div className="mt-4">
               <label className="hi text-xs font-semibold text-navy-65">राशि दर्ज करें (₹)</label>
               <div className="flex items-center mt-1.5 field-input" style={{ padding: 0 }}>
                 <span className="pl-4 pr-1 text-navy-50 font-semibold">₹</span>
@@ -1143,7 +1280,6 @@ function DonateModal({ open, onClose }) {
                   placeholder="जैसे: 251"
                   className="w-full py-3 pr-4 bg-transparent focus:outline-none font-semibold text-navy"
                   style={{ border: "none" }}
-                  autoFocus
                 />
               </div>
             </div>
@@ -1162,9 +1298,10 @@ function DonateModal({ open, onClose }) {
               ))}
             </div>
 
-            <button onClick={handleDonate} className="btn-primary w-full mt-6 py-3.5 rounded-full font-bold focus-ring">
-              {amount ? `₹${(parseInt(amount, 10) || 0).toLocaleString("en-IN")} का सहयोग दें` : "सहयोग दें"}
+            <button onClick={handleDonate} disabled={submitting} className="btn-primary w-full mt-6 py-3.5 rounded-full font-bold focus-ring disabled:opacity-60">
+              {submitting ? "प्रोसेस हो रहा है... (Processing...)" : amount ? `₹${(parseInt(amount, 10) || 0).toLocaleString("en-IN")} का सहयोग दें` : "सहयोग दें"}
             </button>
+            <p className="hi text-xs text-navy-50 text-center mt-3">भुगतान सुरक्षित रूप से Razorpay द्वारा संसाधित किया जाता है</p>
           </div>
         )}
       </div>
