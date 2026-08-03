@@ -10,11 +10,12 @@ import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 
 // ---------------------------------------------------------------------
 // RAZORPAY — TEST MODE ONLY.
-// Replace with your real Razorpay Test Key ID from the Razorpay dashboard
-// (Settings -> API Keys). Keep it as a *test* key ("rzp_test_...") until
-// you are ready to go live with real payments.
+// The Key ID (public, safe for frontend) comes from an env var set in
+// Vercel Project Settings -> Environment Variables, and locally in
+// `.env` as VITE_RAZORPAY_KEY_ID. The Key SECRET is never used here —
+// it only lives server-side in the /api functions.
 // ---------------------------------------------------------------------
-const RAZORPAY_KEY_ID = "rzp_test_YOUR_KEY_ID";
+const RAZORPAY_KEY_ID = import.meta.env.VITE_RAZORPAY_KEY_ID || "rzp_test_YOUR_KEY_ID";
 
 /* ----------------------------------------------------------------------
    TOKENS
@@ -854,21 +855,61 @@ function MembershipModal({ open, onClose }) {
       photoName, ...registrationData
     } = form;
 
+    // 1) Ask our backend to create the order (needs the secret key, so it
+    //    can't happen in the browser). This also re-validates the amount.
+    let order;
+    try {
+      const orderRes = await fetch("/api/create-order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount: amount * 100, receipt: `hjsp_${Date.now()}` }),
+      });
+      if (!orderRes.ok) {
+        const { error: msg } = await orderRes.json().catch(() => ({}));
+        throw new Error(msg || "Order creation failed");
+      }
+      order = await orderRes.json();
+    } catch (err) {
+      console.error("create-order failed:", err);
+      setError("भुगतान शुरू नहीं हो सका। कृपया पुनः प्रयास करें। (Could not start payment, please retry.)");
+      setSubmitting(false);
+      return;
+    }
+
     const options = {
       key: RAZORPAY_KEY_ID,
-      amount: amount * 100, // paise
-      currency: "INR",
+      order_id: order.order_id,
+      amount: order.amount,
+      currency: order.currency,
       name: "हिंद जनसेवी पार्टी / Hind Jansewi Party",
       description: "Membership Registration Contribution",
       prefill: { name: form.name, contact: form.phone },
       theme: { color: "#0B1B33" },
       handler: async function (response) {
         try {
+          // 2) Verify the signature server-side before trusting the payment.
+          const verifyRes = await fetch("/api/verify-payment", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+            }),
+          });
+          const verifyData = await verifyRes.json().catch(() => ({}));
+
+          if (!verifyRes.ok || !verifyData.verified) {
+            setError("भुगतान सत्यापित नहीं हो सका। कृपया सहयोग टीम से संपर्क करें। (Payment could not be verified — please contact support.)");
+            setSubmitting(false);
+            return;
+          }
+
           await saveRegistration(registrationData, amount, response.razorpay_payment_id);
           setPaymentInfo({ paymentId: response.razorpay_payment_id, amount });
           setSubmitted(true);
         } catch (err) {
-          console.error("Firestore write failed:", err);
+          console.error("Verification / Firestore write failed:", err);
           setError("भुगतान सफल हुआ, लेकिन डेटा सहेजने में त्रुटि हुई। कृपया सहयोग टीम से संपर्क करें। (Payment succeeded but saving failed — please contact support.)");
         } finally {
           setSubmitting(false);

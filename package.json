@@ -13,6 +13,7 @@
     "@tailwindcss/vite": "^4.3.3",
     "firebase": "^10.13.0",
     "lucide-react": "^0.383.0",
+    "razorpay": "^2.9.8",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "tailwindcss": "^4.3.3"
