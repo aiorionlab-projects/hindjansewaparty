@@ -6,7 +6,7 @@ import {
   FileText, Upload, Check, Globe, PlayCircle, ArrowRight, Flame
 } from "lucide-react";
 import { db } from "./firebase";
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 
 // ---------------------------------------------------------------------
 // RAZORPAY — TEST MODE ONLY.
@@ -819,17 +819,18 @@ function MembershipModal({ open, onClose }) {
 
   const update = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
-  // Writes the registration + payment record to Firestore, in the exact
-  // shape admin-panel.html (public/admin.html) expects to read.
-  const saveRegistration = async (data, amount, paymentId) => {
-    await addDoc(collection(db, "registrations"), {
-      ...data,
-      amount,
-      paymentId,
-      status: "paid",
-      adminVerified: false,
-      createdAt: serverTimestamp(),
-    });
+  // Optimistically marks the SAME record (keyed by Razorpay order id) that
+  // api/create-order.js already created as "pending" -- it does NOT create
+  // a new document. This just gives the person instant on-screen
+  // confirmation; api/razorpay-webhook.js is what reliably flips this to
+  // "paid" server-side even if this call never runs (closed tab, app
+  // switched to a UPI app and never returned, dropped connection, etc).
+  const saveRegistration = async (orderId, paymentId) => {
+    await setDoc(
+      doc(db, "registrations", orderId),
+      { status: "paid", paymentId, createdAt: serverTimestamp() },
+      { merge: true }
+    );
   };
 
   const handleSubmit = async (e) => {
@@ -862,7 +863,13 @@ function MembershipModal({ open, onClose }) {
       const orderRes = await fetch("/api/create-order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount: amount * 100, receipt: `hjsp_${Date.now()}` }),
+        body: JSON.stringify({
+          amount: amount * 100,
+          receipt: `hjsp_${Date.now()}`,
+          // Sent so the server can write the "pending" record BEFORE
+          // checkout even opens -- see api/create-order.js.
+          record: { ...registrationData, type: "membership" },
+        }),
       });
       if (!orderRes.ok) {
         const { error: msg } = await orderRes.json().catch(() => ({}));
@@ -905,7 +912,7 @@ function MembershipModal({ open, onClose }) {
             return;
           }
 
-          await saveRegistration(registrationData, amount, response.razorpay_payment_id);
+          await saveRegistration(response.razorpay_order_id, response.razorpay_payment_id);
           setPaymentInfo({ paymentId: response.razorpay_payment_id, amount });
           setSubmitted(true);
         } catch (err) {
@@ -917,6 +924,11 @@ function MembershipModal({ open, onClose }) {
       },
       modal: {
         ondismiss: function () {
+          // Best-effort: mark the pending record as cancelled so the admin
+          // panel doesn't show it stuck at "Pending" forever with no
+          // explanation. Purely a UX nicety -- if it fails, the record
+          // just stays "Pending", which is still an honest status.
+          setDoc(doc(db, "registrations", order.order_id), { status: "cancelled" }, { merge: true }).catch(() => {});
           setSubmitting(false);
         },
       },
@@ -925,6 +937,11 @@ function MembershipModal({ open, onClose }) {
     const rzp = new window.Razorpay(options);
     rzp.on("payment.failed", function (resp) {
       setError("भुगतान असफल रहा: " + resp.error.description);
+      setDoc(
+        doc(db, "registrations", order.order_id),
+        { status: "failed", failureReason: resp.error?.description || "Payment failed" },
+        { merge: true }
+      ).catch(() => {});
       setSubmitting(false);
     });
     rzp.open();
@@ -1095,21 +1112,16 @@ function DonateModal({ open, onClose }) {
   }, [open]);
   if (!open) return null;
 
-  // Writes the donation record to Firestore, in the same shape
-  // admin.html expects (name, phone, amount, paymentId, status, adminVerified,
-  // createdAt) plus a `type: "donation"` flag so it can be told apart from
-  // full memberships later if needed.
-  const saveDonation = async (donorName, donorPhone, donationAmount, paymentId) => {
-    await addDoc(collection(db, "registrations"), {
-      name: donorName,
-      phone: donorPhone,
-      amount: donationAmount,
-      paymentId,
-      status: "paid",
-      adminVerified: false,
-      type: "donation",
-      createdAt: serverTimestamp(),
-    });
+  // Optimistically marks the SAME record (keyed by Razorpay order id) that
+  // api/create-order.js already created as "pending" -- see the comment on
+  // MembershipModal's saveRegistration above for why this no longer uses
+  // addDoc, and why api/razorpay-webhook.js is the reliable half of this.
+  const saveDonation = async (orderId, paymentId) => {
+    await setDoc(
+      doc(db, "registrations", orderId),
+      { status: "paid", paymentId, createdAt: serverTimestamp() },
+      { merge: true }
+    );
   };
 
   const handleDonate = async () => {
@@ -1143,7 +1155,13 @@ function DonateModal({ open, onClose }) {
       const orderRes = await fetch("/api/create-order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount: value * 100, receipt: `hjsp_donate_${Date.now()}` }),
+        body: JSON.stringify({
+          amount: value * 100,
+          receipt: `hjsp_donate_${Date.now()}`,
+          // Sent so the server can write the "pending" record BEFORE
+          // checkout even opens -- see api/create-order.js.
+          record: { name, phone, type: "donation" },
+        }),
       });
       if (!orderRes.ok) {
         const { error: msg } = await orderRes.json().catch(() => ({}));
@@ -1186,7 +1204,7 @@ function DonateModal({ open, onClose }) {
             return;
           }
 
-          await saveDonation(name, phone, value, response.razorpay_payment_id);
+          await saveDonation(response.razorpay_order_id, response.razorpay_payment_id);
           setPaymentInfo({ paymentId: response.razorpay_payment_id, amount: value });
           setDone(true);
         } catch (err) {
@@ -1198,6 +1216,9 @@ function DonateModal({ open, onClose }) {
       },
       modal: {
         ondismiss: function () {
+          // Best-effort: mark the pending record as cancelled -- see the
+          // matching comment in MembershipModal above.
+          setDoc(doc(db, "registrations", order.order_id), { status: "cancelled" }, { merge: true }).catch(() => {});
           setSubmitting(false);
         },
       },
@@ -1206,6 +1227,11 @@ function DonateModal({ open, onClose }) {
     const rzp = new window.Razorpay(options);
     rzp.on("payment.failed", function (resp) {
       setError("भुगतान असफल रहा: " + resp.error.description);
+      setDoc(
+        doc(db, "registrations", order.order_id),
+        { status: "failed", failureReason: resp.error?.description || "Payment failed" },
+        { merge: true }
+      ).catch(() => {});
       setSubmitting(false);
     });
     rzp.open();

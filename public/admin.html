@@ -178,6 +178,8 @@
   }
   .badge.paid{background:#e5f6ec;color:var(--green);}
   .badge.pending{background:#fdf3e1;color:var(--amber);}
+  .badge.failed{background:#fbe4e6;color:var(--maroon);}
+  .badge.cancelled{background:#f1f2f4;color:#777;}
   .badge.verified{background:#e5f6ec;color:var(--green);}
   .badge.unverified{background:#f1f2f4;color:#777;}
   #emptyState{
@@ -198,6 +200,8 @@
   .row-actions button.verify-btn{border-color:var(--green);color:var(--green);}
   .row-actions button.verify-btn:hover{background:#e5f6ec;}
   .row-actions button.view-btn:hover{background:#f5f5f5;}
+  .row-actions button.receipt-btn{border-color:var(--maroon);color:var(--maroon);}
+  .row-actions button.receipt-btn:hover{background:#fbe4e6;}
 
   /* ---- MODAL ---- */
   .modal-overlay{
@@ -297,6 +301,10 @@
         <div class="label">Pending</div>
         <div class="value" id="statPending">0</div>
       </div>
+      <div class="stat">
+        <div class="label">Failed / Cancelled</div>
+        <div class="value" id="statFailed">0</div>
+      </div>
     </div>
 
     <div class="toolbar">
@@ -305,6 +313,8 @@
         <option value="all">All Status</option>
         <option value="paid">Paid</option>
         <option value="pending">Pending</option>
+        <option value="failed">Failed</option>
+        <option value="cancelled">Cancelled</option>
         <option value="verified">Verified</option>
         <option value="unverified">Not yet verified</option>
       </select>
@@ -341,6 +351,7 @@
     <h2>Registration details</h2>
     <div id="modalBody"></div>
     <button class="modal-verify" id="modalVerifyBtn" style="display:none" onclick="verifyFromModal()">Verify payment</button>
+    <button class="modal-verify" id="modalReceiptBtn" style="display:none;background:var(--maroon);" onclick="downloadReceiptFromModal()">Download receipt PDF</button>
     <button class="modal-close" onclick="closeModal()">Close</button>
   </div>
 </div>
@@ -400,7 +411,9 @@
   // {
   //   name, phone, permanentAddress, temporaryAddress, occupation,
   //   referrerName, referrerRelation, amount, paymentId,
-  //   status: "paid" | "pending", createdAt: Timestamp
+  //   status: "paid" | "pending" | "failed" | "cancelled",
+  //   failureReason (when failed/cancelled), createdAt: Timestamp,
+  //   receiptPdfBase64 (present once a membership payment is captured)
   // }
   // ---------------------------------------------------------------
   function subscribeToRegistrations(){
@@ -424,7 +437,7 @@
         (r.name||'').toLowerCase().includes(search) ||
         (r.phone||'').includes(search);
       let matchesStatus = true;
-      if(statusFilter === 'paid' || statusFilter === 'pending'){
+      if(statusFilter === 'paid' || statusFilter === 'pending' || statusFilter === 'failed' || statusFilter === 'cancelled'){
         matchesStatus = r.status === statusFilter;
       } else if(statusFilter === 'verified'){
         matchesStatus = !!r.adminVerified;
@@ -438,20 +451,25 @@
     tbody.innerHTML = '';
     document.getElementById('emptyState').style.display = filtered.length ? 'none' : 'block';
 
-    let total = 0, paidCount = 0, pendingCount = 0;
+    let total = 0, paidCount = 0, pendingCount = 0, failedCount = 0;
     allRecords.forEach(r => {
       if(r.status === 'paid'){ total += Number(r.amount||0); paidCount++; }
+      else if(r.status === 'failed' || r.status === 'cancelled'){ failedCount++; }
       else pendingCount++;
     });
     document.getElementById('statTotal').innerText = '₹' + total.toLocaleString('en-IN');
     document.getElementById('statCount').innerText = allRecords.length;
     document.getElementById('statPaid').innerText = paidCount;
     document.getElementById('statPending').innerText = pendingCount;
+    document.getElementById('statFailed').innerText = failedCount;
+
+    const statusLabel = { paid: 'Paid', pending: 'Pending', failed: 'Failed', cancelled: 'Cancelled' };
 
     filtered.forEach(r => {
       const tr = document.createElement('tr');
       const date = r.createdAt && r.createdAt.toDate ? r.createdAt.toDate().toLocaleDateString('en-IN') : '-';
       const referrer = r.referrerName ? (r.referrerName + (r.referrerRelation ? ' (' + r.referrerRelation + ')' : '')) : '-';
+      const status = r.status || 'pending';
       tr.innerHTML = `
         <td>${date}</td>
         <td>${r.name||'-'}</td>
@@ -461,17 +479,42 @@
         <td>${referrer}</td>
         <td>₹${Number(r.amount||0).toLocaleString('en-IN')}</td>
         <td>${r.paymentId||'-'}</td>
-        <td><span class="badge ${r.status==='paid'?'paid':'pending'}">${r.status==='paid'?'Paid':'Pending'}</span></td>
+        <td><span class="badge ${status}">${statusLabel[status]||status}</span></td>
         <td><span class="badge ${r.adminVerified?'verified':'unverified'}">${r.adminVerified?'Verified':'Not verified'}</span></td>
         <td>
           <div class="row-actions">
             <button class="view-btn" onclick="viewDetails('${r.id}')">View</button>
             ${r.status==='paid' && !r.adminVerified ? `<button class="verify-btn" onclick="verifyPayment('${r.id}')">Verify</button>` : ''}
+            ${r.status==='paid' && r.receiptPdfBase64 ? `<button class="receipt-btn" onclick="downloadReceipt('${r.id}')">Receipt</button>` : ''}
           </div>
         </td>
       `;
       tbody.appendChild(tr);
     });
+  }
+
+  // ---------------------------------------------------------------
+  // RECEIPT — downloads the membership certificate + payment receipt
+  // PDF that api/razorpay-webhook.js generates and stores as base64 on
+  // the record once payment is captured. Only reachable from here,
+  // behind the Firebase Auth login above -- the public registration
+  // site never reads this field, so this is the only place it can be
+  // downloaded from. From here the admin can share the downloaded file
+  // with the member directly (WhatsApp, email, etc).
+  // ---------------------------------------------------------------
+  function downloadReceipt(id){
+    const r = allRecords.find(x => x.id === id);
+    if(!r || !r.receiptPdfBase64) { alert('Receipt not generated yet for this record.'); return; }
+    const byteChars = atob(r.receiptPdfBase64);
+    const byteNumbers = new Array(byteChars.length);
+    for(let i=0;i<byteChars.length;i++){ byteNumbers[i] = byteChars.charCodeAt(i); }
+    const blob = new Blob([new Uint8Array(byteNumbers)], { type: 'application/pdf' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `HJSP-Receipt-${(r.name||'member').replace(/\s+/g,'_')}-${r.paymentId||id}.pdf`;
+    a.click();
+    URL.revokeObjectURL(url);
   }
 
   // ---------------------------------------------------------------
@@ -495,6 +538,7 @@
       ['Specialization', r.specialization||'-'], ['Aadhar', r.aadhar||'-'],
       ['Amount', '₹'+Number(r.amount||0).toLocaleString('en-IN')],
       ['Payment ID', r.paymentId||'-'], ['Payment status', r.status||'-'],
+      ...(r.status === 'failed' || r.status === 'cancelled' ? [['Reason', r.failureReason || (r.status === 'cancelled' ? 'Checkout closed before completing payment' : '-')]] : []),
       ['Submitted on', date],
       ['Admin verified', r.adminVerified ? ('Yes — by '+(r.verifiedBy||'-')+' on '+(r.verifiedAt&&r.verifiedAt.toDate?r.verifiedAt.toDate().toLocaleString('en-IN'):'-')) : 'No']
     ];
@@ -503,6 +547,8 @@
     ).join('');
     document.getElementById('modalVerifyBtn').style.display =
       (r.status === 'paid' && !r.adminVerified) ? 'block' : 'none';
+    document.getElementById('modalReceiptBtn').style.display =
+      (r.status === 'paid' && r.receiptPdfBase64) ? 'block' : 'none';
     document.getElementById('detailModal').classList.add('show');
   }
 
@@ -524,6 +570,12 @@
     if(modalRecordId){
       verifyPayment(modalRecordId);
       closeModal();
+    }
+  }
+
+  function downloadReceiptFromModal(){
+    if(modalRecordId){
+      downloadReceipt(modalRecordId);
     }
   }
 

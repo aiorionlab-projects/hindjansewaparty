@@ -1,0 +1,50 @@
+rules_version = '2';
+
+// IMPORTANT: this is a template to review and merge into whatever rules
+// you already have in the Firebase console (Firestore Database -> Rules)
+// -- it is NOT applied automatically by deploying code.
+//
+// Why this matters for the receipt-PDF feature: the membership
+// certificate/receipt PDF is stored as a field (receiptPdfBase64) directly
+// on the registration document. The only thing that actually makes it
+// "admin only" is that reads on this collection require a signed-in
+// account. If your current rules allow public reads on `registrations`
+// (e.g. so the public site could show a live counter, or anything like
+// that), this PDF -- along with everyone's name, phone, address, and
+// Aadhar number already stored on these documents -- would be readable
+// by anyone. Restricting reads to authenticated users only, as below, is
+// what makes admin.html's Firebase Auth login the actual gate.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /registrations/{regId} {
+      // Reads (including the receipt PDF field) only for signed-in admin
+      // accounts. If you want to restrict this further to specific admin
+      // emails/UIDs rather than "any account that can sign in", add a
+      // check here, e.g.:
+      //   allow read: if request.auth != null &&
+      //     request.auth.token.email in ['you@example.com', 'partner@example.com'];
+      allow read: if request.auth != null;
+
+      // Documents are now created server-side only, by api/create-order.js
+      // using the Firebase Admin SDK (which bypasses these rules
+      // entirely) -- so the public site never needs client-side create
+      // permission any more.
+      allow create: if false;
+
+      // The public site's own browser JS still does one small, specific
+      // update after a successful Razorpay checkout (see saveRegistration
+      // / saveDonation in src/App.jsx) -- and again on cancel/failure.
+      // This only allows flipping the status-related fields, nothing else,
+      // and only on a document that already exists.
+      allow update: if request.auth == null &&
+        request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['status', 'paymentId', 'failureReason', 'createdAt']) &&
+        request.resource.data.status in ['paid', 'failed', 'cancelled'];
+
+      // Admin can update anything (e.g. the "Verify payment" button).
+      allow update: if request.auth != null;
+
+      allow delete: if false;
+    }
+  }
+}
